@@ -30,6 +30,26 @@ async function run() {
         // Send a ping to confirm a successful connection
 
         const db = client.db("mediqueue");
+        const tutorsCollection = db.collection("tutors");
+
+        app.get("/tutors", async (req, res) => {
+            const { search, startDate, endDate } = req.query;
+
+            const query = {};
+
+            if (search) {
+                query.tutorName = { $regex: search, $options: "i" }; // case-insensitive
+            }
+
+            if (startDate || endDate) {
+                query.sessionStartDate = {};
+                if (startDate) query.sessionStartDate.$gte = startDate;
+                if (endDate) query.sessionStartDate.$lte = endDate;
+            }
+
+            const tutors = await tutorsCollection.find(query).toArray();
+            res.json(tutors);
+        });
         
 
 
