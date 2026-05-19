@@ -50,6 +50,14 @@ async function run() {
             const tutors = await tutorsCollection.find(query).toArray();
             res.json(tutors);
         });
+
+
+        app.post("/tutors", async (req, res) => {
+            const tutor = req.body;
+            const result = await tutorsCollection.insertOne(tutor);
+            console.log(`New tutor created with the following id: ${result.insertedId}`);
+            res.json(result);
+        });
         
 
 
