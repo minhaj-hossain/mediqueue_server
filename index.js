@@ -1,7 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 dotenv.config();
 
@@ -31,6 +31,7 @@ async function run() {
 
         const db = client.db("mediqueue");
         const tutorsCollection = db.collection("tutors");
+        const bookingsCollection = db.collection("bookings");
 
         app.get("/tutors", async (req, res) => {
             const { search, startDate, endDate } = req.query;
@@ -38,7 +39,7 @@ async function run() {
             const query = {};
 
             if (search) {
-                query.tutorName = { $regex: search, $options: "i" }; // case-insensitive
+                query.tutorName = { $regex: search, $options: "i" }; 
             }
 
             if (startDate || endDate) {
@@ -52,13 +53,57 @@ async function run() {
         });
 
 
+        app.get("/tutors/:id", async (req, res) => {
+            try {
+                const tutor = await tutorsCollection.findOne({ _id: new ObjectId(req.params.id) });
+                if (!tutor) return res.status(404).json({ message: 'Tutor not found.' });
+                res.json(tutor);
+            } catch (err) {
+                res.status(500).json({ message: err.message });
+            }
+        });
+
+        app.patch("/tutors/:id/decrease-slot", async (req, res) => {
+            try {
+                const tutor = await tutorsCollection.findOne({ _id: new ObjectId(req.params.id) });
+
+                if (!tutor) return res.status(404).json({ message: 'Tutor not found.' });
+                if (tutor.totalSlot <= 0) return res.status(400).json({ message: 'No slots remaining.' });
+
+                const result = await tutorsCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $inc: { totalSlot: -1 } }
+                );
+                res.json(result);
+            } catch (err) {
+                res.status(500).json({ message: err.message });
+            }
+        });
+
         app.post("/tutors", async (req, res) => {
-            const tutor = req.body;
+            const tutor = {
+                ...req.body,
+                hourlyFee: Number(req.body.hourlyFee),
+                totalSlot: Number(req.body.totalSlot),
+                availableDays: JSON.parse(req.body.availableDays ?? '[]'), 
+                sessionStartDate: new Date(req.body.sessionStartDate),
+            };
             const result = await tutorsCollection.insertOne(tutor);
-            console.log(`New tutor created with the following id: ${result.insertedId}`);
             res.json(result);
         });
-        
+
+        app.post("/bookings", async (req, res) => {
+            try {
+                const booking = {
+                    ...req.body,
+                    bookedAt: new Date(),
+                };
+                const result = await bookingsCollection.insertOne(booking);
+                res.status(201).json(result);
+            } catch (err) {
+                res.status(500).json({ message: err.message });
+            }
+        });
 
 
 
