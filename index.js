@@ -63,6 +63,15 @@ async function run() {
             }
         });
 
+          app.get('/my-tutors/:id', async (req, res) => {
+            const {id} = req.params;
+            console.log(id)
+
+            const result = await tutorsCollection.find({userId: id}).toArray();
+            res.send(result)
+        })
+
+
         app.patch("/tutors/:id/decrease-slot", async (req, res) => {
             try {
                 const tutor = await tutorsCollection.findOne({ _id: new ObjectId(req.params.id) });
@@ -80,16 +89,32 @@ async function run() {
             }
         });
 
-        app.post("/tutors", async (req, res) => {
-            const tutor = {
-                ...req.body,
-                hourlyFee: Number(req.body.hourlyFee),
-                totalSlot: Number(req.body.totalSlot),
-                availableDays: JSON.parse(req.body.availableDays ?? '[]'),
-                sessionStartDate: new Date(req.body.sessionStartDate),
-            };
-            const result = await tutorsCollection.insertOne(tutor);
-            res.json(result);
+        app.get('/tutors/:id', async (req, res) => {
+            const {id} = req.body;
+            console.log(id)
+
+            const result = await tutorsCollection.find({userId: id}).toArray();
+            res.send(result)
+        })
+
+       
+
+        app.post('/tutors', async (req, res) => {
+            try {
+                console.log(req.body);
+
+                const tutorData = req.body;
+
+                const result = await tutorsCollection.insertOne(tutorData);
+
+                res.send(result);
+
+            } catch (err) {
+                console.log(err);
+                res.status(500).send({
+                    message: err.message
+                });
+            }
         });
 
         app.post("/bookings", async (req, res) => {
@@ -119,6 +144,11 @@ async function run() {
             } catch (err) {
                 res.status(500).json({ message: err.message });
             }
+        })
+
+        app.get('/top-tutors', async (req, res) => {
+            const result = await tutorsCollection.find().limit(6).toArray();
+            res.json(result)
         })
 
 
