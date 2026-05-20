@@ -39,7 +39,7 @@ async function run() {
             const query = {};
 
             if (search) {
-                query.tutorName = { $regex: search, $options: "i" }; 
+                query.tutorName = { $regex: search, $options: "i" };
             }
 
             if (startDate || endDate) {
@@ -85,7 +85,7 @@ async function run() {
                 ...req.body,
                 hourlyFee: Number(req.body.hourlyFee),
                 totalSlot: Number(req.body.totalSlot),
-                availableDays: JSON.parse(req.body.availableDays ?? '[]'), 
+                availableDays: JSON.parse(req.body.availableDays ?? '[]'),
                 sessionStartDate: new Date(req.body.sessionStartDate),
             };
             const result = await tutorsCollection.insertOne(tutor);
@@ -104,6 +104,11 @@ async function run() {
                 res.status(500).json({ message: err.message });
             }
         });
+
+        app.get("/bookings", async (req, res) => {
+            const bookings = await bookingsCollection.find().toArray();
+            res.json(bookings);
+        })
 
 
 
