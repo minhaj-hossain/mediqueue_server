@@ -100,14 +100,25 @@ async function run() {
                 };
                 const result = await bookingsCollection.insertOne(booking);
                 res.status(201).json(result);
+                console.log(result)
             } catch (err) {
                 res.status(500).json({ message: err.message });
             }
         });
 
-        app.get("/bookings", async (req, res) => {
-            const bookings = await bookingsCollection.find().toArray();
-            res.json(bookings);
+        app.get("/bookings/:id", async (req, res) => {
+
+            const {id} =  req.params;
+            console.log(id)
+            try {
+                const booking = await bookingsCollection.find({ userId: id }).toArray();
+                if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+
+                console.log(booking)
+                res.json(booking);
+            } catch (err) {
+                res.status(500).json({ message: err.message });
+            }
         })
 
 
