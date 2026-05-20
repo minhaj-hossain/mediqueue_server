@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { createRemoteJWKSet, jwtVerify } = require('jose-cjs');
 
 dotenv.config();
 
@@ -22,6 +23,32 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
+
+const JWKS = createRemoteJWKSet(
+    new URL(`http://localhost:3000/api/auth/jwks`)
+)
+
+const verifyToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).json({ message: 'Authorization header is missing.' });
+    }
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ message: 'Token is missing.' });
+    }
+
+    try {
+        const { payload } = await jwtVerify(token, JWKS)
+       
+        next();
+    } catch (err) {
+        return res.status(401).json({ message: 'Invalid token.' });
+    }
+
+
+}
 
 async function run() {
     try {
@@ -53,7 +80,7 @@ async function run() {
         });
 
 
-        app.get("/tutors/:id", async (req, res) => {
+        app.get("/tutors/:id",verifyToken, async (req, res) => {
             try {
                 const tutor = await tutorsCollection.findOne({ _id: new ObjectId(req.params.id) });
                 if (!tutor) return res.status(404).json({ message: 'Tutor not found.' });
@@ -63,16 +90,15 @@ async function run() {
             }
         });
 
-          app.get('/my-tutors/:id', async (req, res) => {
-            const {id} = req.params;
-            console.log(id)
+        app.get('/my-tutors/:id',verifyToken, async (req, res) => {
+            const { id } = req.params;
 
-            const result = await tutorsCollection.find({userId: id}).toArray();
+            const result = await tutorsCollection.find({ userId: id }).toArray();
             res.send(result)
         })
 
 
-        app.patch("/tutors/:id/decrease-slot", async (req, res) => {
+        app.patch("/tutors/:id/decrease-slot",verifyToken, async (req, res) => {
             try {
                 const tutor = await tutorsCollection.findOne({ _id: new ObjectId(req.params.id) });
 
@@ -89,19 +115,10 @@ async function run() {
             }
         });
 
-        app.get('/tutors/:id', async (req, res) => {
-            const {id} = req.body;
-            console.log(id)
 
-            const result = await tutorsCollection.find({userId: id}).toArray();
-            res.send(result)
-        })
 
-       
-
-        app.post('/tutors', async (req, res) => {
+        app.post('/tutors', verifyToken, async (req, res) => {
             try {
-                console.log(req.body);
 
                 const tutorData = req.body;
 
@@ -110,14 +127,14 @@ async function run() {
                 res.send(result);
 
             } catch (err) {
-                console.log(err);
+               
                 res.status(500).send({
                     message: err.message
                 });
             }
         });
 
-        app.post("/bookings", async (req, res) => {
+        app.post("/bookings",verifyToken, async (req, res) => {
             try {
                 const booking = {
                     ...req.body,
@@ -125,21 +142,20 @@ async function run() {
                 };
                 const result = await bookingsCollection.insertOne(booking);
                 res.status(201).json(result);
-                console.log(result)
+               
             } catch (err) {
                 res.status(500).json({ message: err.message });
             }
         });
 
-        app.get("/bookings/:id", async (req, res) => {
+        app.get("/bookings/:id",verifyToken, async (req, res) => {
 
-            const {id} =  req.params;
-            console.log(id)
+            const { id } = req.params;
+
             try {
                 const booking = await bookingsCollection.find({ userId: id }).toArray();
                 if (!booking) return res.status(404).json({ message: 'Booking not found.' });
 
-                console.log(booking)
                 res.json(booking);
             } catch (err) {
                 res.status(500).json({ message: err.message });
