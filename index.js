@@ -41,7 +41,7 @@ const verifyToken = async (req, res, next) => {
 
     try {
         const { payload } = await jwtVerify(token, JWKS)
-       
+
         next();
     } catch (err) {
         return res.status(401).json({ message: 'Invalid token.' });
@@ -80,7 +80,7 @@ async function run() {
         });
 
 
-        app.get("/tutors/:id",verifyToken, async (req, res) => {
+        app.get("/tutors/:id", verifyToken, async (req, res) => {
             try {
                 const tutor = await tutorsCollection.findOne({ _id: new ObjectId(req.params.id) });
                 if (!tutor) return res.status(404).json({ message: 'Tutor not found.' });
@@ -90,15 +90,22 @@ async function run() {
             }
         });
 
-        app.get('/my-tutors/:id',verifyToken, async (req, res) => {
+        app.get('/my-tutors/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
 
             const result = await tutorsCollection.find({ userId: id }).toArray();
             res.send(result)
         })
 
+        app.delete('/remove-my-tutor/:id', verifyToken, async (req, res) => {
+            const { id } = req.params
+            const result = await tutorsCollection.deleteOne({ _id: new ObjectId(id) })
 
-        app.patch("/tutors/:id/decrease-slot",verifyToken, async (req, res) => {
+            res.send(result)
+        })
+
+
+        app.patch("/tutors/:id/decrease-slot", verifyToken, async (req, res) => {
             try {
                 const tutor = await tutorsCollection.findOne({ _id: new ObjectId(req.params.id) });
 
@@ -127,14 +134,14 @@ async function run() {
                 res.send(result);
 
             } catch (err) {
-               
+
                 res.status(500).send({
                     message: err.message
                 });
             }
         });
 
-        app.post("/bookings",verifyToken, async (req, res) => {
+        app.post("/bookings", verifyToken, async (req, res) => {
             try {
                 const booking = {
                     ...req.body,
@@ -142,13 +149,13 @@ async function run() {
                 };
                 const result = await bookingsCollection.insertOne(booking);
                 res.status(201).json(result);
-               
+
             } catch (err) {
                 res.status(500).json({ message: err.message });
             }
         });
 
-        app.get("/bookings/:id",verifyToken, async (req, res) => {
+        app.get("/bookings/:id", verifyToken, async (req, res) => {
 
             const { id } = req.params;
 
@@ -162,14 +169,20 @@ async function run() {
             }
         })
 
+        app.patch('/update-status/:id', async (req, res) => {
+            const { id } = req.params;
+            const result = await bookingsCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { bookStatus: 'canceled' } }
+
+            )
+            res.send(result)
+        })
+
         app.get('/top-tutors', async (req, res) => {
             const result = await tutorsCollection.find().limit(6).toArray();
             res.json(result)
         })
-
-
-
-
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
