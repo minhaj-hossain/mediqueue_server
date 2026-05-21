@@ -25,7 +25,7 @@ const client = new MongoClient(uri, {
 });
 
 const JWKS = createRemoteJWKSet(
-    new URL(`http://localhost:3000/api/auth/jwks`)
+    new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
 )
 
 const verifyToken = async (req, res, next) => {
@@ -141,6 +141,20 @@ async function run() {
             }
         });
 
+        app.patch('/update-tutor/:id', async (req, res) => {
+
+            const { id } = req.params;
+            const updatedTutor = req.body;
+            const result = await tutorsCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: updatedTutor }
+            )
+
+            res.send(result);
+
+
+        })
+
         app.post("/bookings", verifyToken, async (req, res) => {
             try {
                 const booking = {
@@ -169,7 +183,7 @@ async function run() {
             }
         })
 
-        app.patch('/update-status/:id', async (req, res) => {
+        app.patch('/update-status/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
             const result = await bookingsCollection.updateOne(
                 { _id: new ObjectId(id) },
